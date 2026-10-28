@@ -20,6 +20,13 @@ def setup_tracing():
         print("LangSmith is off (add LANGSMITH_API_KEY to .env to see traces)")
 
 
+def build_classifier(live: bool, agent: bool):
+    if agent:
+        from .agent import AgentClassifier, ScriptedToolModel
+        return AgentClassifier() if live else AgentClassifier(ScriptedToolModel())
+    return LLMClassifier() if live else OfflineClassifier()
+
+
 def section(title: str):
     print(f"\n=== {title} ===")
 
@@ -27,11 +34,13 @@ def section(title: str):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--live", action="store_true", help="use gpt-4o-mini instead of the offline classifier")
+    parser.add_argument("--agent", action="store_true",
+                        help="use a LangChain agent that checks the tower and routes the ticket with tools")
     parser.add_argument("--plot", default="dashboard.png", help="where to save the dashboard chart")
     args = parser.parse_args()
 
     setup_tracing()
-    classifier = LLMClassifier() if args.live else OfflineClassifier()
+    classifier = build_classifier(args.live, args.agent)
     print("Classifier:", type(classifier).__name__)
 
     from .zia import Zia

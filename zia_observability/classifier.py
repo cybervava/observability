@@ -25,7 +25,8 @@ class Label(BaseModel):
 
 
 class Classifier(Protocol):
-    def classify(self, prompt_version: str, text: str, config: dict | None = None) -> str: ...
+    def classify(self, prompt_version: str, text: str, config: dict | None = None,
+                 place: str | None = None) -> str: ...
 
 
 KEYWORDS = [
@@ -37,18 +38,23 @@ KEYWORDS = [
 ]
 
 
+def offline_decision(system_prompt: str, text: str) -> str:
+    """Keyword "model" that obeys the system prompt literally — including v7's number rule."""
+    if "contains a number" in system_prompt and re.search(r"\d", text):
+        return "BILL_HIGH"
+    lowered = text.lower()
+    for category, words in KEYWORDS:
+        if any(w in lowered for w in words):
+            return category
+    return "NO_SIGNAL"
+
+
 class OfflineClassifier:
     """Deterministic stand-in for the LLM. Follows the v7 rule the way a literal model would."""
 
-    def classify(self, prompt_version: str, text: str, config: dict | None = None) -> str:
-        prompt = PROMPTS[prompt_version]
-        if "contains a number" in prompt and re.search(r"\d", text):
-            return "BILL_HIGH"
-        lowered = text.lower()
-        for category, words in KEYWORDS:
-            if any(w in lowered for w in words):
-                return category
-        return "NO_SIGNAL"
+    def classify(self, prompt_version: str, text: str, config: dict | None = None,
+                 place: str | None = None) -> str:
+        return offline_decision(PROMPTS[prompt_version], text)
 
 
 class LLMClassifier:
@@ -57,6 +63,7 @@ class LLMClassifier:
         self.llm = ChatOpenAI(model=model, temperature=0)
         self._structured = self.llm.with_structured_output(Label)
 
-    def classify(self, prompt_version: str, text: str, config: dict | None = None) -> str:
+    def classify(self, prompt_version: str, text: str, config: dict | None = None,
+                 place: str | None = None) -> str:
         return self._structured.invoke([("system", PROMPTS[prompt_version]), ("user", text)],
                                        config=config or {}).category

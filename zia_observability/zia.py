@@ -26,7 +26,12 @@ class Zia:
         start = time.perf_counter()
         config = {"tags": ["zia", self.live_prompt],
                   "metadata": {"prompt_version": self.live_prompt, "message_id": message["id"]}}
-        category = self.classifier.classify(self.live_prompt, message["text"], config=config)
-        self.log(trace_id=trace_id, message_id=message["id"], step="classify", prompt_version=self.live_prompt,
-                 category=category, ms=round((time.perf_counter() - start) * 1000))
+        category = self.classifier.classify(self.live_prompt, message["text"], config=config,
+                                            place=message.get("place"))
+        fields = dict(trace_id=trace_id, message_id=message["id"], step="classify", prompt_version=self.live_prompt,
+                      category=category, ms=round((time.perf_counter() - start) * 1000))
+        tools = getattr(self.classifier, "last_tools", None)
+        if tools is not None:
+            fields["tools"] = tools                  # agent mode: which tools ran, with what inputs and results
+        self.log(**fields)
         return category

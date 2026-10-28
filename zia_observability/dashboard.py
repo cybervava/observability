@@ -10,7 +10,8 @@ DAYS = {"Mon": "v6", "Tue": "v7", "Wed": "v7"}
 def simulate_days(classifier: Classifier, days: dict = DAYS, per_day: int = 300, seed: int = 5) -> list[dict]:
     """Ask each prompt version about each sample once, then replay those answers for `per_day` messages."""
     rng = random.Random(seed)
-    answers = {v: {m["text"]: classifier.classify(v, m["text"]) for m in SAMPLE_MESSAGES} for v in PROMPTS}
+    answers = {v: {m["text"]: classifier.classify(v, m["text"], place=m["place"]) for m in SAMPLE_MESSAGES}
+               for v in PROMPTS}
 
     dashboard = []
     for day, version in days.items():
